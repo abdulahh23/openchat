@@ -45,7 +45,10 @@ class ChatService:
     def _with_system(self, messages: list[ChatMessage]) -> list[ChatMessage]:
         if not self._system_prompt or any(m.role == "system" for m in messages):
             return messages
-        return [ChatMessage(role="system", content=self._system_prompt), *messages]
+        return [
+            ChatMessage(role="system", content=[{"type": "text", "text": self._system_prompt}]),
+            *messages,
+        ]
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
         try:

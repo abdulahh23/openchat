@@ -96,13 +96,31 @@ class OpenAICompatibleProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         client = self._require_client()
+
+        def format_content(blocks):
+            formatted = []
+            for block in blocks:
+                if block.type == "text":
+                    formatted.append({"type": "text", "text": block.text or ""})
+                elif block.type == "image":
+                    formatted.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{block.mime_type or 'image/jpeg'};base64,{block.data or ''}"},
+                    })
+            return formatted
+
+        openai_messages = [
+            {"role": m.role, "content": format_content(m.content)}
+            for m in messages
+        ]
+
         kwargs: dict = {}
         if temperature is not None:
             kwargs["temperature"] = temperature
         try:
             stream = await client.chat.completions.create(
                 model=model,
-                messages=[m.model_dump() for m in messages],
+                messages=openai_messages,
                 stream=True,
                 **kwargs,
             )

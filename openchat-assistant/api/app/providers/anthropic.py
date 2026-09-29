@@ -53,13 +53,41 @@ class AnthropicProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         client = self._require_client()
-        system = "\n\n".join(m.content for m in messages if m.role == "system")
-        turns = [{"role": m.role, "content": m.content} for m in messages if m.role != "system"]
+
+        def format_content(blocks):
+            formatted = []
+            for block in blocks:
+                if block.type == "text":
+                    formatted.append({"type": "text", "text": block.text or ""})
+                elif block.type == "image":
+                    formatted.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": block.mime_type or "image/jpeg",
+                            "data": block.data or "",
+                        },
+                    })
+            return formatted
+
+        system = ""
+        for m in messages:
+            if m.role == "system":
+                for block in m.content:
+                    if block.type == "text":
+                        system += (block.text or "") + "\n\n"
+
+        turns = [
+            {"role": m.role, "content": format_content(m.content)}
+            for m in messages if m.role != "system"
+        ]
+
         kwargs: dict = {"model": model, "max_tokens": DEFAULT_MAX_TOKENS, "messages": turns}
         if system:
-            kwargs["system"] = system
+            kwargs["system"] = system.strip()
         if temperature is not None:
             kwargs["temperature"] = min(temperature, 1.0)
+
         try:
             async with client.messages.stream(**kwargs) as stream:
                 async for text in stream.text_stream:

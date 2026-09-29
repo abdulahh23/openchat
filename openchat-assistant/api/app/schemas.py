@@ -4,12 +4,20 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+
 Role = Literal["system", "user", "assistant"]
+
+
+class ContentBlock(BaseModel):
+    type: Literal["text", "image"]
+    text: str | None = Field(default=None)
+    data: str | None = Field(default=None, description="Base64 encoded data for images")
+    mime_type: str | None = Field(default=None)
 
 
 class ChatMessage(BaseModel):
     role: Role
-    content: str = Field(max_length=200_000)
+    content: list[ContentBlock] = Field(min_length=1)
 
 
 class ChatRequest(BaseModel):

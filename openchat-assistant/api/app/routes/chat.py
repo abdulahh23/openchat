@@ -30,8 +30,19 @@ async def chat(
     """
     if len(body.messages) > settings.max_messages:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Too many messages")
-    if any(len(m.content) > settings.max_message_chars for m in body.messages):
+
+    # Calculate total payload size for validation
+    total_chars = 0
+    for m in body.messages:
+        for block in m.content:
+            if block.type == "text":
+                total_chars += len(block.text or "")
+            elif block.type == "image":
+                total_chars += len(block.data or "")
+
+    if total_chars > settings.max_message_chars:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Message is too long")
+
     if body.messages[-1].role != "user":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Last message must be user")
 

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 120.0
     model_cache_ttl_seconds: float = 30.0
     max_messages: int = 100
-    max_message_chars: int = 32_000
+    max_message_chars: int = 10_000_000
 
     # Local: Ollama (always tried first)
     ollama_host: str = "http://localhost:11434"

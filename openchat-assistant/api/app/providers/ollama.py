@@ -58,10 +58,26 @@ class OllamaProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         options = {"temperature": temperature} if temperature is not None else None
+
+        # Ollama takes a separate 'images' list for the last user message
+        ollama_messages = []
+        images = []
+
+        for m in messages:
+            content_text = ""
+            for block in m.content:
+                if block.type == "text":
+                    content_text += (block.text or "")
+                elif block.type == "image":
+                    images.append(block.data or "")
+
+            ollama_messages.append({"role": m.role, "content": content_text})
+
         try:
             stream = await self._client.chat(
                 model=model,
-                messages=[m.model_dump() for m in messages],
+                messages=ollama_messages,
+                images=images if images else None,
                 stream=True,
                 options=options,
             )
