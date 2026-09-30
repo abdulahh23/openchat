@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { PanelLeftIcon, SquarePenIcon } from "lucide-react";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
 
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { Composer } from "@/components/chat/composer";
@@ -15,12 +16,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useChat } from "@/hooks/use-chat";
 import { useModels } from "@/hooks/use-models";
 import { cn } from "@/lib/utils";
+import { fetchVoiceConfig, type VoiceHistoryMessage } from "@/lib/voice";
+
+const VoiceSession = dynamic(() => import("@/components/voice/voice-session"), {
+  ssr: false,
+});
 
 export function ChatApp() {
   const models = useModels();
   const chat = useChat(models.selection);
   const [sidebarOpen, setSidebarOpen] = useState(true); // desktop
   const [mobileOpen, setMobileOpen] = useState(false); // mobile sheet
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [voicePrefs, setVoicePrefs] = useState({ voice: null as string | null, captions: true });
+  const [voiceConfig, setVoiceConfig] = useState<{ voices: any[] } | null>(null);
+
+  useEffect(() => {
+    if (isVoiceMode && !voiceConfig) {
+      fetchVoiceConfig().then(setVoiceConfig).catch((err) => toast.error(err.message));
+    }
+  }, [isVoiceMode, voiceConfig]);
 
   const empty = !chat.active || chat.active.messages.length === 0;
   const noModels = !models.loading && !models.effective;
@@ -44,6 +59,17 @@ export function ChatApp() {
     const undo = chat.clearAll();
     toast("All chats deleted", { action: { label: "Undo", onClick: undo } });
   };
+
+  const voiceHistory = useMemo((): VoiceHistoryMessage[] => {
+    if (!chat.active) return [];
+    return chat.active.messages
+      .filter((m) => !m.error && !m.pending)
+      .slice(-20)
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+  }, [chat.active]);
 
   // Global shortcuts: new chat, search, stop.
   useEffect(() => {
@@ -79,6 +105,7 @@ export function ChatApp() {
     <Composer
       onSend={chat.send}
       onStop={chat.stop}
+      onVoiceClick={() => setIsVoiceMode(true)}
       streaming={chat.streaming}
       disabled={noModels}
       autoFocus
@@ -88,6 +115,25 @@ export function ChatApp() {
 
   return (
     <div className="flex h-dvh overflow-hidden">
+      {isVoiceMode && voiceConfig && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <VoiceSession
+            selection={models.selection}
+            participantName="User"
+            history={voiceHistory}
+            voices={voiceConfig.voices}
+            voice={voicePrefs.voice}
+            captions={voicePrefs.captions}
+            onPrefsChange={(patch) => setVoicePrefs((p) => ({ ...p, ...patch }))}
+            onTranscripts={(messages) => {
+              const convId = chat.activeId ?? (chat.conversations[0]?.id ?? "default");
+              messages.forEach((m) => chat.upsertVoiceMessage(convId, m));
+            }}
+            onEnd={() => setIsVoiceMode(false)}
+            onRetry={() => {}}
+          />
+        </div>
+      )}
       {/* Desktop sidebar */}
       <aside
         className={cn(

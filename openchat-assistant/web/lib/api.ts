@@ -67,7 +67,10 @@ export async function streamChat({
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify({
-        messages,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: [{ type: "text", text: m.content }],
+        })),
         provider: selection?.provider ?? null,
         model: selection?.model ?? null,
       }),

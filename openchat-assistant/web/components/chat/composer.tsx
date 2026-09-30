@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUpIcon, SquareIcon } from "lucide-react";
+import { ArrowUpIcon, MicIcon, SquareIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { APP_CONFIG } from "@/lib/config";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 export function Composer({
   onSend,
   onStop,
+  onVoiceClick,
   streaming,
   disabled,
   placeholder = `Message ${APP_CONFIG.appName}…`,
@@ -17,6 +18,7 @@ export function Composer({
 }: {
   onSend: (text: string) => void;
   onStop: () => void;
+  onVoiceClick?: () => void;
   streaming: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -66,7 +68,22 @@ export function Composer({
         enterKeyHint="send"
         className="field-sizing-content max-h-52 min-h-7 w-full resize-none bg-transparent py-1.5 text-[15px] leading-6 outline-none placeholder:text-muted-foreground"
       />
-      <div className="mt-1 flex items-center justify-end">
+      <div className="mt-1 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          {onVoiceClick && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onVoiceClick}
+              disabled={disabled}
+              aria-label="Voice mode"
+              className="rounded-full"
+            >
+              <MicIcon className="size-4 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
         <Button
           type="submit"
           size="icon"

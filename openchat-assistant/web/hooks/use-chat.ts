@@ -57,6 +57,25 @@ export function useChat(selection: ModelSelection, onFinish?: () => void) {
     [update],
   );
 
+  const upsertVoiceMessage = useCallback(
+    (convId: string, msg: { id: string; role: "user" | "assistant"; content: string; createdAt: number; voice: true }) => {
+      setConversations((list) =>
+        list.map((c) => {
+          if (c.id !== convId) return c;
+          const existingIdx = c.messages.findIndex((m) => m.id === msg.id);
+          const updatedMessages = [...c.messages];
+          if (existingIdx !== -1) {
+            updatedMessages[existingIdx] = { ...updatedMessages[existingIdx], content: msg.content };
+          } else {
+            updatedMessages.push({ ...msg, pending: false });
+          }
+          return { ...c, messages: updatedMessages, updatedAt: Date.now() };
+        }),
+      );
+    },
+    [],
+  );
+
   const generate = useCallback(
     async (convId: string, history: ChatMessage[]) => {
       const reply: ChatMessage = {
@@ -219,5 +238,6 @@ export function useChat(selection: ModelSelection, onFinish?: () => void) {
     openChat,
     deleteChat,
     clearAll,
+    upsertVoiceMessage,
   };
 }

@@ -77,9 +77,9 @@ class OllamaProvider(Provider):
             stream = await self._client.chat(
                 model=model,
                 messages=ollama_messages,
-                images=images if images else None,
                 stream=True,
                 options=options,
+                **({"images": images} if images else {}),
             )
             async for chunk in stream:
                 if chunk.message and chunk.message.content:
